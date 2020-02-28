@@ -88,10 +88,99 @@ uniqueInstance 采用 volatile 关键字修饰很有必要， uniqueInstance = n
 
 volatile作用：
 
-1. 可见性
+1. 可见性（从主存读取，修改后刷新到主存）
 2. 防止指令重排序
 
--------------------------
+volatile关键字和synchronized关键字比较：
+
+|                  | volatile         | synchronized   |
+| ---------------- | ---------------- | -------------- |
+| 线程同步实现级别 | 轻量级、性能更好 | 重量级         |
+| 修饰             | 变量             | 方法、代码块   |
+| 作用             | 可见性           | 可见性、原子性 |
+| 是否阻塞         | &times;          | &radic;        |
+
+### 6.ThreadLocal
+
+实现每个线程都有自己的专属本地变量（线程局部变量）
+
+Example：
+
+```java
+public class ThreadLocalExample implements Runnable{
+
+     // SimpleDateFormat 不是线程安全的，所以每个线程都要有自己独立的副本
+    private static final ThreadLocal<SimpleDateFormat> formatter = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMdd HHmm"));
+
+    public static void main(String[] args) throws InterruptedException {
+        ThreadLocalExample obj = new ThreadLocalExample();
+        for(int i=0 ; i<3; i++){
+            Thread t = new Thread(obj, ""+i);
+            Thread.sleep(new Random().nextInt(1000));
+            t.start();
+        }
+    }
+
+    @Override
+    public void run() {
+        System.out.println("Thread Name= "+Thread.currentThread().getName()+" default Formatter = "+formatter.get().toPattern());
+        try {
+            Thread.sleep(new Random().nextInt(1000));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        //formatter pattern is changed here by thread, but it won't reflect to other threads
+        formatter.set(new SimpleDateFormat());
+
+        System.out.println("Thread Name= "+Thread.currentThread().getName()+" formatter = "+formatter.get().toPattern());
+    }
+
+}
+```
+
+Output：
+
+```
+Thread Name= 0 default Formatter = yyyyMMdd HHmm
+Thread Name= 0 formatter = yy-M-d ah:mm
+Thread Name= 1 default Formatter = yyyyMMdd HHmm
+Thread Name= 2 default Formatter = yyyyMMdd HHmm
+Thread Name= 1 formatter = yy-M-d ah:mm
+Thread Name= 2 formatter = yy-M-d ah:mm
+```
+
+原理：
+
+每个线程都维护有一个ThreadLocal.ThreadLocalMap，存储以ThreadLocal为key的键值对
+
+```java
+public class ThreadLocalExample1 {
+    public static void main(String[] args) {
+        ThreadLocal threadLocal1 = new ThreadLocal();
+        ThreadLocal threadLocal2 = new ThreadLocal();
+        Thread thread1 = new Thread(() -> {
+            threadLocal1.set(1);
+            threadLocal2.set(1);
+        });
+        Thread thread2 = new Thread(() -> {
+            threadLocal1.set(2);
+            threadLocal2.set(2);
+        });
+        thread1.start();
+        thread2.start();
+    }
+}
+```
+
+![](images/68747470733a2f2f63732d6e6f7465732d313235363130393739362e636f732e61702d6775616e677a686f752e6d7971636c6f75642e636f6d2f36373832363734632d316266652d343837392d616633392d6539643732326139356433392e706e67.png)
+
+内存泄漏问题：
+
+> 待解决
+
+ThreadLocalMap中的key为ThreadLocal的弱引用，而value是强引用，ThreadLocal没有被外部强引用的情况，GC时key会被回收，value不会，ThreadLocalMap产生key为null的键值对，会造成内存泄漏
+
+
 
 
 
