@@ -180,9 +180,57 @@ public class ThreadLocalExample1 {
 
 ThreadLocalMap中的key为ThreadLocal的弱引用，而value是强引用，ThreadLocal没有被外部强引用的情况，GC时key会被回收，value不会，ThreadLocalMap产生key为null的键值对，会造成内存泄漏
 
+### 7.线程池
 
+Executor框架结构：
 
+1. 任务（Runnable/Callable）
+2. 任务的执行（Executor）
+3. 异步计算的结果（Future）
 
+使用示意图：
+
+![](images/68747470733a2f2f696d67636f6e766572742e6373646e696d672e636e2f6148523063446f764c3231354c574a73623263746447387464584e6c4c6d397a6379316a626931695a576c716157356e4c6d467361586c31626d4e7a4c6d4e76625338784f4330314c544d774c7a67304f44.jpg)
+
+- **Callable接口用于处理Runnable接口不支持的用例，有返回结果和异常抛出**
+- **submit方法相比execut方法**
+  - **会返回实现了Future接口的对象，Runnable对象的返回结果为null**
+  - **方便异常处理**
+- **主线程可以执行 `FutureTask.get()`方法来等待任务执行完成。主线程也可以执行 `FutureTask.cancel（boolean mayInterruptIfRunning）`来取消此任务的执行**
+
+ThreadPoolExecutor执行流程图：
+
+![](images/68747470733a2f2f6d792d626c6f672d746f2d7573652e6f73732d636e2d6265696a696e672e616c6979756e63732e636f6d2f323031392d372f254535253942254245254538254137254133254537254241254246254537254138253842254536254231254130254535254145253945.png)
+
+`ThreadPoolExecutor`3个核心参数：
+
+1. **`corePoolSize` :** 最小可以同时运行的线程数量。
+
+2. **`maximumPoolSize` :** 队列存满的时候，当前可以同时运行的线程数量。
+
+3. **`workQueue`:** 当前运行的线程数达到`corePoolSize` ，新任务会进入队列。
+
+`ThreadPoolExecutor`其他常见参数:
+
+1. **`keepAliveTime`**:当线程数量大于 `corePoolSize` 时，多余的空闲线程的最大存活时间 。
+2. **`unit`** : 时间单位。
+3. **`threadFactory`** :executor 创建新线程的时候会用到。
+4. **`handler`** :饱和策略。
+
+Executors的常见线程池对比：
+
+|                      | corePoolSize | maximumPoolSize  | **`workQueue`**  | keepAliveTime |
+| -------------------- | ------------ | ---------------- | ---------------- | ------------- |
+| FixedThreadPool      | n            | n                | Intger.MAX_VALUE | 0             |
+| SingleThreadExecutor | 1            | 1                | Intger.MAX_VALUE | 0             |
+| CachedThreadPool     | 0            | Intger.MAX_VALUE | 0                | 60            |
+
+**不推荐使用的原因都与Intger.MAX_VALUE有关**
+
+线程池大小确定：
+
+- CPU密集型任务（n+1）：n为CPU核心数
+- I/O密集型任务（2n）：系统大部分时间处理I/O交互，不会占用CPU处理
 
 ## 三、JVM
 
