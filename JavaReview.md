@@ -104,51 +104,6 @@ volatile关键字和synchronized关键字比较：
 
 实现每个线程都有自己的专属本地变量（线程局部变量）
 
-Example：
-
-```java
-public class ThreadLocalExample implements Runnable{
-
-     // SimpleDateFormat 不是线程安全的，所以每个线程都要有自己独立的副本
-    private static final ThreadLocal<SimpleDateFormat> formatter = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMdd HHmm"));
-
-    public static void main(String[] args) throws InterruptedException {
-        ThreadLocalExample obj = new ThreadLocalExample();
-        for(int i=0 ; i<3; i++){
-            Thread t = new Thread(obj, ""+i);
-            Thread.sleep(new Random().nextInt(1000));
-            t.start();
-        }
-    }
-
-    @Override
-    public void run() {
-        System.out.println("Thread Name= "+Thread.currentThread().getName()+" default Formatter = "+formatter.get().toPattern());
-        try {
-            Thread.sleep(new Random().nextInt(1000));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        //formatter pattern is changed here by thread, but it won't reflect to other threads
-        formatter.set(new SimpleDateFormat());
-
-        System.out.println("Thread Name= "+Thread.currentThread().getName()+" formatter = "+formatter.get().toPattern());
-    }
-
-}
-```
-
-Output：
-
-```
-Thread Name= 0 default Formatter = yyyyMMdd HHmm
-Thread Name= 0 formatter = yy-M-d ah:mm
-Thread Name= 1 default Formatter = yyyyMMdd HHmm
-Thread Name= 2 default Formatter = yyyyMMdd HHmm
-Thread Name= 1 formatter = yy-M-d ah:mm
-Thread Name= 2 formatter = yy-M-d ah:mm
-```
-
 原理：
 
 每个线程都维护有一个ThreadLocal.ThreadLocalMap，存储以ThreadLocal为key的键值对
@@ -176,9 +131,50 @@ public class ThreadLocalExample1 {
 
 内存泄漏问题：
 
-> 待解决
+ThreadLocalMap中的key为ThreadLocal的弱引用，而value是强引用，ThreadLocal在没有被外部强引用的情况，GC时key会被回收，value不会，ThreadLocalMap产生key为null的键值对，会造成内存泄漏，调用set()、get()、remove()的时候会清理掉key为null的记录，使用完手动调用remove()方法可避免内存泄漏
 
-ThreadLocalMap中的key为ThreadLocal的弱引用，而value是强引用，ThreadLocal没有被外部强引用的情况，GC时key会被回收，value不会，ThreadLocalMap产生key为null的键值对，会造成内存泄漏
+应用场景：
+
+- 每个线程需要有自己单独的实例
+- 实例需要在多个方法中共享，但不希望被多线程共享
+
+1）存储用户session
+
+```java
+private static final ThreadLocal threadSession = new ThreadLocal();
+
+public static Session getSession() throws InfrastructureException {
+    Session s = (Session) threadSession.get();
+    try {
+        if (s == null) {
+            s = getSessionFactory().openSession();
+            threadSession.set(s);
+        }
+    } catch (HibernateException ex) {
+        throw new InfrastructureException(ex);
+    }
+    return s;
+}
+```
+
+2）解决线程安全问题
+
+```java
+public class DateUtil {
+    private static ThreadLocal<SimpleDateFormat> format1 = new ThreadLocal<SimpleDateFormat>() {
+        @Override
+        protected SimpleDateFormat initialValue() {
+            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        }
+    };
+
+    public static String formatDate(Date date) {
+        return format1.get().format(date);
+    }
+}
+```
+
+原本非线程安全的`SimpleDateFormat`，这里是线程安全的
 
 ### 7.线程池
 
@@ -232,6 +228,70 @@ Executors的常见线程池对比：
 - CPU密集型任务（n+1）：n为CPU核心数
 - I/O密集型任务（2n）：系统大部分时间处理I/O交互，不会占用CPU处理
 
+### 8.乐观锁与悲观锁：
+
+|          | 悲观锁                               | 乐观锁                                         |
+| -------- | ------------------------------------ | ---------------------------------------------- |
+| 思想     | 加独占锁供一个线程使用，阻塞其他线程 | 不加锁，更新的时候判断此期间是否被其他线程更改 |
+| 应用场景 | 写多于读（资源竞争多）               | 读多于写（资源竞争少）                         |
+| 实现     | synchronized、ReentrantLock          | CAS、版本号                                    |
+
+CAS算法：
+
+比较内存中的某个值V是否与预期值A相同，相同则将该值更新为新值B，不相同则不修改，具备原子性，其通过Unsafe类调用CPU指令实现
+
+CAS缺点：
+
+1. **ABA问题，可通过在变量上加版本号解决**，如1A>2B>3A，`AtomicStampedReference`也是通过版本号解决该问题
+2. **自旋（不成功就循环直到成功）长时间不成功开销大**，限制自旋次数解决
+3. 只能保证一个共享变量的原子性
+
+### 9.Atomic原子类总结：
+
+![](images/TIM截图20200229124055.png)
+
+### 10.AQS同步组件总结：
+
+![](images/TIM截图20200229124553.png)
+
+AQS原理图：
+
+![](images/640.webp)
+
+> CLH(Craig,Landin,and Hagersten)队列是一个虚拟的双向队列（不存在队列实例，仅存在结点之间的关联关系）。AQS是将每条请求共享资源的线程封装成一个CLH锁队列的一个结点（Node）来实现锁的分配。
+
+CountDownLatch和CyclicBarrier的区别：
+
+| CountDownLatch                                       | CyclicBarrier                                |
+| ---------------------------------------------------- | -------------------------------------------- |
+| 减计数方式，为0时释放等待线程                        | 加计数方式，达指定值时释放等待线程           |
+| 计数为0时无法重置，不可重复利用                      | 计数达到指定值时通过reset重置为0，可重复利用 |
+| 调用countDown()方法计数减一，调用await()方法进行阻塞 | 调用await()方法计数加一，未到到指定值则阻塞  |
+
+### 11.并发容器
+
+- **ConcurrentHashMap:** 线程安全的 HashMap
+
+- **CopyOnWriteArrayList:** 线程安全的 List，适合读多写少的场合
+
+  - 读操作不加锁，写操作加锁并且新建数组做修改后替换
+  - 存在脏读，最终一致性
+  - 不同于ReentreentReadWriteLock的仅读读不阻塞
+
+- **ConcurrentLinkedQueue:** 高效的并发队列，使用链表实现。可以看做一个线程安全的 LinkedList，这是一个非阻塞队列。
+
+- **BlockingQueue:** 这是一个接口，JDK 内部通过链表、数组等方式实现了这个接口。表示阻塞队列，非常适合用于作为数据共享的通道。
+
+  - **ArrayBlockingQueue**：有界队列、数组
+  - **LinkedBlockingQueue**：有/无界队列、单向链表
+  - **PriorityBlockingQueue**：无界、支持优先级（comparTo/Comparator）
+
+- **ConcurrentSkipListMap:** 跳表的实现。这是一个 Map，使用跳表的数据结构进行快速查找。
+
+  - 基于多指针有序链表实现
+
+  ![](images/68747470733a2f2f63732d6e6f7465732d313235363130393739362e636f732e61702d6775616e677a686f752e6d7971636c6f75642e636f6d2f30656133376565322d633232342d346337392d623839352d6531333163363830356334302e706e67.png)
+
 ## 三、JVM
 
 ------------------------------
@@ -256,7 +316,7 @@ System.out.println(array[0]);//1
 
 - 数组转为集合后，底层还是数组
 
-![](assets/阿里巴巴Java开发手-Arrays.asList()方法.png)
+![](images/阿里巴巴Java开发手-Arrays.asList()方法.png)
 
 - 将数组转换为ArrayList
 
