@@ -300,24 +300,52 @@ CountDownLatch和CyclicBarrier的区别：
 
 ### 2.JVM垃圾回收
 
-判断对象是否死亡：
+#### 2.1回收对象
 
-1. 引用计数法：难以解决相互循环引用的问题，Python在使用
-2. 可达性分析算法：以GC Root对象为起点搜索出的节点形成引用链，不在引用链的对象就回收，否则根据引用的强软弱虚执行相应回收机制
+**回收堆，判断对象是否死亡：**
 
-废弃常量：一个没有被任何对象引用的常量
+1. 引用计数法：难以解决相互循环引用的问题（Python）
+2. 可达性分析算法：以GC Root对象为起点搜索出的节点形成引用链，不在引用链的对象就回收，否则根据引用的强软弱虚执行相应回收机制（Java、C#），GC Root对象包括：
 
-无用类（同时满足）：
+   - 虚拟机栈和本地方法栈中引用的对象
+   - 方法区中的类静态属性、常量引用的对象
 
-1. 堆中无该类实例
-2. 加载该类的classLoader已经被回收
-3. 该类的class对象没有被任何地方引用（无法通过反射访问该类）
+> 可达性分析算法中的不可达对象并非“非死不可”，第一次标记后，如果该对象重写过finalize()方法且未被虚拟机调用，则会进入筛选，此期间若与引用链的对象建立关联则可以“免死”
 
+**回收方法区**：
 
+- **废弃常量**：一个没有被任何对象引用的常量
 
-#### 2.1垃圾收集算法
+- **无用类**（同时满足）：
+- 堆中无该类实例
+  
+- 加载该类的classLoader已经被回收
+  
+- 该类的class对象没有被任何地方引用（无法通过反射访问该类）
 
-#### 2.2垃圾收集器
+#### 2.2垃圾收集算法
+
+- 标记-清理
+  - 缺点：效率低、内存碎片
+- 复制
+- 标记-整理
+- 分代收集
+  - 新生代朝生夕死，采用复制算法
+  - 老年代对象存活率高、无分配担保空间，采用标记-清理或标记-整理算法
+
+#### 2.3内存分配及回收策略
+
+- **新生代 GC（Minor GC）**:新生代的垃圾收集，频繁且速度快
+- **老年代 GC（Major GC/Full GC）**:老年代的 GC，比 Minor GC 的慢 10 倍以上。
+
+内存分配：
+
+- 对象优先在Eden分配，分配不了则Minor GC，Eden和S0/S1存活的对象移入S0/S1且年龄+1，如果S放不下则进入Old（空间分配担保），Old也存放不了则Full GC
+- 大对象（内存空间连续）直接进入Old：避免新生代内的复制
+- 长期存活（默认15晋升）的对象进入Old
+- 动态对象年龄判断：Survival中相同年龄对象总和超过其1/2时，取该年龄与晋升阈值`MaxTenuringThreshold`的最小值作为新晋升阈值
+
+#### 2.4垃圾收集器
 
 ![](images/微信图片_20200301210433.png)
 
@@ -347,7 +375,127 @@ CountDownLatch和CyclicBarrier的区别：
   - 无法处理浮动垃圾（并发清除阶段用户线程产生的垃圾）
   - 标记清除算法产生大量空间碎片
 
-- G1：
+- G1：替代CMS
+
+  - 特点：
+    - 并行与并发：利用多核、多CPU缩短STW的时间
+    - 分代收集：
+    - 空间整合：整体基于标记-整理，局部基于复制，这种特性利于程序长期运行，避免因大对象找不到连续内存空间而提前GC
+    - 可预测的停顿：能指定在一段时间M毫秒内，GC的时间不超过N毫秒
+  - 运作步骤：
+    - 初始标记
+    - 并发标记
+    - 最终标记
+    - 筛选回收
+
+### 3.类加载器总结
+
+所有类都由类加载器加载，加载的作用是将.class文件加载到内存
+
+> 同全限定名、同类加载器加载的类才是同一类
+
+类加载过程：
+
+- 加载：类加载过程的一个阶段：通过一个类的完全限定查找此类字节码文件，并利用字节码文件创建一个Class对象
+
+- 连接：
+
+  - 验证：目的在于确保Class文件的字节流中包含信息符合当前虚拟机要求，不会危害虚拟机自身安全。主要包括四种验证，文件格式验证，元数据验证，字节码验证，符号引用验证。
+
+  - 准备：为类变量(即static修饰的字段变量)分配内存并且设置该类变量的初始值即0(如static int i=5;这里只将i初始化为0，至于5的值将在初始化时赋值)，这里不包含用final修饰的static，因为final在编译的时候就会分配了，注意这里不会为实例变量分配初始化，类变量会分配在方法区中，而实例变量是会随着对象一起分配到Java堆中。
+
+  - 解析：主要将常量池中的符号引用替换为直接引用的过程。符号引用就是一组符号来描述目标，可以是任何字面量，而直接引用就是直接指向目标的指针、相对偏移量或一个间接定位到目标的句柄。有类或接口的解析，字段解析，类方法解析，接口方法解析(这里涉及到字节码变量的引用，如需更详细了解，可参考《深入Java虚拟机》)。
+
+- 初始化：类加载最后阶段，若该类具有超类，则对其进行初始化，执行静态初始化器和静态初始化成员变量(如前面只初始化了默认值的static变量将会在这个阶段赋值，成员变量也将被初始化)。
+
+**类加载器工作原理（双亲委派模型）**：
+
+![](D:/Note/images/截图.png)
+
+1. **BootstrapClassLoader(启动类加载器)** ：最顶层的加载类，由C++实现，负责加载 `%JAVA_HOME%/lib`目录下的jar包和类或者或被 `-Xbootclasspath`参数指定的路径中的所有类。
+2. **ExtensionClassLoader(扩展类加载器)** ：主要负责加载目录 `%JRE_HOME%/lib/ext` 目录下的jar包和类，或被 `java.ext.dirs` 系统变量所指定的路径下的jar包。
+3. **AppClassLoader(应用程序类加载器)** :面向用户的加载器，负责加载当前应用classpath下的所有jar包和类。
+
+java.lang.ClassLoader的loadClass()方法：
+
+```java
+private final ClassLoader parent; 
+protected Class<?> loadClass(String name, boolean resolve)
+        throws ClassNotFoundException
+    {
+        synchronized (getClassLoadingLock(name)) {
+            // 首先，检查请求的类是否已经被加载过
+            Class<?> c = findLoadedClass(name);
+            if (c == null) {
+                long t0 = System.nanoTime();
+                try {
+                    if (parent != null) {//父加载器不为空，调用父加载器loadClass()方法处理（递归调用）
+                        c = parent.loadClass(name, false);
+                    } else {//父加载器为空，使用启动类加载器 BootstrapClassLoader 加载
+                        c = findBootstrapClassOrNull(name);
+                    }
+                } catch (ClassNotFoundException e) {
+                   //抛出异常说明父类加载器无法完成加载请求
+                }
+
+                if (c == null) {
+                    long t1 = System.nanoTime();
+                    //自己尝试加载
+                    c = findClass(name);
+
+                    // this is the defining class loader; record the stats
+                    sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                    sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                    sun.misc.PerfCounter.getFindClasses().increment();
+                }
+            }
+            if (resolve) {
+                resolveClass(c);
+            }
+            return c;
+        }
+    }
+```
+
+> 双亲委派模型并非集成关系，而是组合关系
+
+**双亲委派模型的好处**：
+
+让类加载器具备优先级，防止核心API被篡改，避免类的重复加载（同全限定名同类加载器为同类）
+
+> 如果不使用双亲委派模型则继承classLoader重写loadClass()
+
+### 4.JVM参数配置
+
+- 堆内存相关
+
+  - 堆内存：-Xms2G -Xmx5G（最小2G、最大5G）
+
+  - 新生代内存：-XX:NewSize=256m （最小）
+
+    -XX:MaxNewSize=1024m（最大）
+
+    或者直接-Xmn256m
+
+  - 新生代与老年代比值：-XX:NewRatio=1
+
+  > Full GC 的成本远高于 Minor GC，应尽可能将对象分配在新生代，实际项目中根据 GC 日志分析新生代空间大小分配是否合理，适当通过“-Xmn”命令调节新生代大小，最大限度降低新对象直接进入老年代的情况。
+
+  - 元空间：-XX:MetaspaceSize=N（初始值和最小大小）
+
+    -XX:MaxMetaspaceSize=N（最大值，不指定的话随类的创建可能耗尽系统内存）
+
+- 垃圾收集相关
+
+  - 垃圾回收器：-XX:+UseSerialGC
+  - GC记录：
+
+  ```
+  -XX:+UseGCLogFileRotation  
+  -XX:NumberOfGCLogFiles=< number of log files >  
+  -XX:GCLogFileSize=< file size >[ unit ] 
+  -Xloggc:/path/to/gc.log
+  ```
 
 ------------------------------
 
