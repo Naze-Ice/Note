@@ -367,7 +367,7 @@ CountDownLatch和CyclicBarrier的区别：
   - 初始标记：STW，标记GCRoots直接关联的对象，速度很快
   - 并发标记：开启GC和用户线程，跟踪记录用户线程更新引用的地方
   - 重新标记：STW，修正并发标记期间发生变动的那部分对象的标记记录，比初始标记稍长
-  - 并发清除：开启用户线程，同时GC线程进行清理
+  - 并发清理：开启用户线程，同时GC线程进行清理
 
   缺点：
 
@@ -383,10 +383,29 @@ CountDownLatch和CyclicBarrier的区别：
     - 空间整合：整体基于标记-整理，局部基于复制，这种特性利于程序长期运行，避免因大对象找不到连续内存空间而提前GC
     - 可预测的停顿：能指定在一段时间M毫秒内，GC的时间不超过N毫秒
   - 运作步骤：
-    - 初始标记
-    - 并发标记
+    - 初始标记：STW，标记GCRoots直接引用的对象和所在Region（RootRegion）
+    - RootRegion扫描：扫描O区
+    - 并发标记：
     - 最终标记
     - 筛选回收
+
+G1内存结构：
+
+![](images/微信图片_20200303222834.jpg)
+
+> 每个格子代表一个region（默认1~32MB，2000个），H为超大对象（>=0.5Region），大于一个Region时会申请连续空间，属于O区
+
+Rset（Remember Sets）：记录其他Region引用当前Region对象的记录
+
+CSet（Collection Sets）：本次GC需要清理的Region集合
+
+YGC：
+
+![](images/KWLQ48~JDG4TOIYZEK9.png)
+
+MixGC（老年代+年轻代）：
+
+
 
 ### 3.类加载器总结
 
