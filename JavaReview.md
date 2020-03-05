@@ -351,14 +351,14 @@ CountDownLatch和CyclicBarrier的区别：
 
 > 分别表示新生代、老年代垃圾收集器，连线代表他们之间可以配合使用
 
-- Serial：单线程新生代收集器（client模式默认）
+- Serial：单线程新生代收集器
 
-- ParNew：多线程版本Serial（server模式下的首选）
+- ParNew：多线程版本Serial
 - Parallel Scavenge：关注吞吐量（CPU运行代码的时间/CPU总消耗时间）
 
 > 新生代都是复制算法
 
-- Serial Old：Serial老年代版本（标记整理、client模式默认）
+- Serial Old：Serial老年代版本（标记整理）
 
 - Parallel Old：Parallel Scavenge老年代版本（标记整理）
 
@@ -366,7 +366,7 @@ CountDownLatch和CyclicBarrier的区别：
 
   - 初始标记：STW，标记GCRoots直接关联的对象，速度很快
   - 并发标记：开启GC和用户线程，跟踪记录用户线程更新引用的地方
-  - 重新标记：STW，修正并发标记期间发生变动的那部分对象的标记记录，比初始标记稍长
+  - 重新标记：STW，修正并发标记期间用户线程更新引用的那部分对象的标记记录，比初始标记稍长
   - 并发清理：开启用户线程，同时GC线程进行清理
 
   缺点：
@@ -382,30 +382,62 @@ CountDownLatch和CyclicBarrier的区别：
     - 分代收集：
     - 空间整合：整体基于标记-整理，局部基于复制，这种特性利于程序长期运行，避免因大对象找不到连续内存空间而提前GC
     - 可预测的停顿：能指定在一段时间M毫秒内，GC的时间不超过N毫秒
-  - 运作步骤：
-    - 初始标记：STW，标记GCRoots直接引用的对象和所在Region（RootRegion）
-    - RootRegion扫描：扫描O区
-    - 并发标记：
-    - 最终标记
-    - 筛选回收
 
 G1内存结构：
 
 ![](images/微信图片_20200303222834.jpg)
 
-> 每个格子代表一个region（默认1~32MB，2000个），H为超大对象（>=0.5Region），大于一个Region时会申请连续空间，属于O区
+> 每个格子代表一个region（默认1~32MB，约2000个），H为超大对象（>=0.5Region），大于一个Region时会申请连续空间，属于O区
 
-Rset（Remember Sets）：记录其他Region引用当前Region对象的记录
+三个概念：
 
-CSet（Collection Sets）：本次GC需要清理的Region集合
+- Rset（Remember Set）：记录引用了当前Region对象的Region记录（谁引用了我），**作用**：
+  - YGC时O区不GC因而认为O区全为GCRoot，需扫描全部O区，但通过RSet可以直接找到O=》Y的引用，避免了扫描整个O区
+  - MixGC中并发标记需要扫描GCRoot引用的对象，RootRegion扫描阶段获取到Y=》O的引用，避免扫描整个O区
+- CSet（Collection Set）：一次GC需要清理的Region集合
 
-YGC：
+![](images/2184951-bd04a968d1c8c895.png)
+
+- SATB（snapshot-at-the-beginning，起始快照）：在GC开始设置快照，根据快照找到活的对象（快照中的对象可达则认定是活的，新分配的对象也认为是活的，可以避免真正的可达对象不会被误回收），对象引用发生变化则记录到SATB缓冲区
+
+G1收集的四种操作：
+
+- YGC
+- 并发标记周期
+- MixGC
+- 必要的时候FullGC（采用Serial Old Full GC）
+
+**YGC：**STW，E区内存耗尽时触发，并发执行将存活对象拷贝到S或O区
 
 ![](images/KWLQ48~JDG4TOIYZEK9.png)
 
-MixGC（老年代+年轻代）：
+**MixGC：**
 
+当蒸个堆的使用率达到默认的45%时会触发一次并发收集周期，MixGC收集的是所有新生代的Region+并发收集周期统计的收益高的若干O区Region
 
+**并发收集周期：**
+
+- 初始标记：STW，依托于YGC的STW标记S区GCRoots直接引用的对象和所在Region（RootRegion）
+- RootRegion扫描：扫描GCRoots到O区的引用，必须在YGC开始前完成
+- 并发标记：从扫描出的对象递归扫描整个堆，还包括SATB记录的引用，并将整个Region都是垃圾的标记为“X”
+
+![](images/68747470733a2f2f626f6c672e6f62732e636e2d6e6f7274682d312e6d79687561776569636c6f75642e636f6d2f313930392f67312d332e706e67.png)
+
+- 重新标记：STW，处理线程剩余的SATB日志缓冲区的引用和所有更新的引用，并将标记为“X”的Region回收
+
+![](images/68747470733a2f2f626f6c672e6f62732e636e2d6e6f7274682d312e6d79687561776569636c6f75642e636f6d2f313930392f67312d342e706e67.png)
+
+- 复制/清理：STW，选择Y区和O区存活率较低的Region组成CSets，进行复制清理
+
+![](images/TIM图片20200305151336.png)
+
+**转移失败的担保机制**：
+
+从Y/O区拷贝存活对象或者分配巨型对象时无法找到可用分区时，会进行单线程、STW的FullGC
+
+**假象的G1垃圾收集过程**：
+
+![](images/微信图片_20200305163339.jpg)
 
 ### 3.类加载器总结
 
@@ -515,6 +547,32 @@ protected Class<?> loadClass(String name, boolean resolve)
   -XX:GCLogFileSize=< file size >[ unit ] 
   -Xloggc:/path/to/gc.log
   ```
+
+常用配置参数：
+
+1.**-Xms**：初始堆大小。只要启动，就占用的堆大小。
+
+2.**-Xmx**：最大堆大小。java.lang.OutOfMemoryError：Java heap这个错误可以通过配置-Xms和-Xmx参数来设置。
+
+3.**-Xss**：栈大小分配。栈是每个线程私有的区域，通常只有几百K大小，决定了函数调用的深度，而局部变量、参数都分配到栈上。
+
+当出现大量局部变量，递归时，会发生栈空间OOM（java.lang.StackOverflowError）之类的错误。
+
+4.**XX:NewSize**：设置新生代大小的绝对值。
+
+5.**-XX:NewRatio**：设置年轻代和年老代的比值。比如设置为3，则新生代：老年代=1:3，新生代占总heap的1/4。
+
+6.**-XX:MaxPermSiz**e：设置持久代大小。
+
+java.lang.OutOfMemoryError:PermGenspace这个OOM错误需要合理调大PermSize和MaxPermSize大小。
+
+7.**-XX:SurvivorRatio**：年轻代中Eden区与两个Survivor区的比值。注意，Survivor区有form和to两个。比如设置为8时，那么eden:form:to=8:1:1。
+
+8.**-XX:HeapDumpOnOutOfMemoryError**：发生OOM时转储堆到文件，这是一个非常好的诊断方法。
+
+9.**-XX:HeapDumpPath：**导出堆的转储文件路径。
+
+10.**-XX:OnOutOfMemoryError**：OOM时，执行一个脚本，比如发送邮件报警，重启程序。后面跟着一个脚本的路径。
 
 ------------------------------
 
