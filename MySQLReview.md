@@ -63,15 +63,24 @@ MySQL默认采用自动提交模式。如果不显示使用`START TRANSACTION`�
 
   此时U1修改丢失，银行转账也存在这种问题，可通过U盾解决
 
-  **数据库层面解决**：
+  **数据库层面解决**，两种方式：
+
+  - 悲观锁
 
   将操作变为串行化，在步骤1和步骤2都加上X锁
-
+  
   ```mysql
-  select ... for update;
+begin;
+  select * from account where id = 1 for update;
+  update account set balance=150 where id =1;
+  commit;
   ```
-
+  
   > 两个事务都直接update也不会存在丢失修改，但现实场景有可能先查数据做业务判断，再修改
+  
+  - 乐观锁
+  
+  
 
 ## MVVC
 
@@ -79,9 +88,11 @@ MySQL默认采用自动提交模式。如果不显示使用`START TRANSACTION`�
 
 # 二.锁
 
-## 锁类型
+![](images/164c6d7ae44d8ac6.png)
 
-### 1.读写锁
+
+
+### 1.锁
 
 - 共享锁（Shared）：S锁/读锁
 - 互斥锁（Exclusive）：X锁/写锁
