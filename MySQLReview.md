@@ -200,6 +200,7 @@ MVCC维护了一个ReadView结构，包含了当前系统未提交的事务列�
 
 - 对于一致性非锁定读，即使读取的行已被执行了`SELECT ... FOR UPDATE`，也不能阻止`SELECT`的读取
 - 由于`AUTOCOMMIT`，使用一致性锁定读时，必须加上`BEGIN`,`START TRANSACTION`或者SET `AUTOCOMMIT`=0
+- 对于`SELECT ... FOR UPDATE`，使用上索引时是加行锁，反之加表锁
 
 # 二、索引
 
