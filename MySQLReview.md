@@ -16,7 +16,7 @@ ACID关系：
 
 ![](images/68747470733a2f2f63732d6e6f7465732d313235363130393739362e636f732e61702d6775616e677a686f752e6d7971636c6f75642e636f6d2f696d6167652d32303139313230373231303433373032332e706e67.png)
 
-AUTOCOMMIT：
+`AUTOCOMMIT`：
 
 MySQL默认采用自动提交模式。如果不显示使用`START TRANSACTION`来开始一个事务，每个查询都会被当作一个事务自动提交
 
@@ -63,28 +63,22 @@ MySQL默认采用自动提交模式。如果不显示使用`START TRANSACTION`�
 
   此时U1修改丢失，银行转账也存在这种问题，可通过U盾解决
 
-  **数据库层面解决**，两种方式：
-
-  - 悲观锁
+  **数据库层面解决**，使用**悲观锁**：
 
   将操作变为串行化，在步骤1和步骤2都加上X锁
-  
+
   ```mysql
-begin;
+  begin;
   select * from account where id = 1 for update;
   update account set balance=150 where id =1;
   commit;
   ```
-  
-  > 两个事务都直接update也不会存在丢失修改，但现实场景有可能先查数据做业务判断，再修改
-  
-  - 乐观锁
-  
-  
 
-## MVVC
+  因为加上了X锁，步骤2只能在步骤1和3完成后，再完成步骤4
 
-多版本并发控制，
+  > 两个事务都直接update也不会存在丢失修改，但现实场景有可能先查数据做业务判断，再修改。
+
+  **所谓的乐观锁版本号控制无法实现**，因为在可重复读隔离级别下，vesion只能读到事务开始的版本号，不会改变
 
 # 二.锁
 
@@ -144,6 +138,8 @@ MySQL的InnoDB**采用两阶段锁协议**
     SELECT ... FOR UPDATE -- X锁
     ```
 
+> 一致性非锁定读下，`SELECT ... FOR UPDATE`无法阻止`SELECT` 的读取，依然会读快照
+
 ## 一致性非锁定读
 
 InnoDB通过行多版本控制的方式读取当前执行时间数据库中行的数据，即如果当前读取的行被X锁定，这时读取操作不会阻塞等待X锁的释放，会直接读取行的快照数据
@@ -190,7 +186,20 @@ MVCC维护了一个ReadView结构，包含了当前系统未提交的事务列�
 
 ## 一致性锁定读
 
+即显示锁定
 
+- ```mysql
+  SELECT ... LOCK IN SHARE MODE -- S锁
+  ```
+
+- ```mysql
+  SELECT ... FOR UPDATE -- X锁
+  ```
+
+**注意**
+
+- 对于一致性非锁定读，即使读取的行已被执行了`SELECT ... FOR UPDATE`，也不能阻止`SELECT`的读取
+- 由于`AUTOCOMMIT`，使用一致性锁定读时，必须加上`BEGIN`,`START TRANSACTION`或者SET `AUTOCOMMIT`=0
 
 # 二、索引
 
