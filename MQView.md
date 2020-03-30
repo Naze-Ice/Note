@@ -115,5 +115,50 @@ Kafka中每个消息写入队列都由一个offset，代表消息的序号，con
 
 # 可靠性
 
+MQ的数据不能丢
+
+## RabbitMQ
+
+![](images/rabbitmq-message-lose.png)
+
+![](images/rabbitmq-message-lose-solution.png)
+
+设置持久化有两个步骤
+
+- 创建queue的时候设置为持久化，保证持久化queue的元数据
+- 发送消息的时候将消息的`deliveryMode`设置为2，将消息持久化
+
+## Kafka
+
+- 消费端丢失数据，可关闭自动提交offset
+- Kafka丢失数据，如某个broker宕机，重新参与leader选举的follower数据还未同步完，起码设置4个参数：
+  - 给topic设置`replication.factor`参数：值必须大于1，即每个paritition至少有两个副本
+  - Kafka 服务端设置 `min.insync.replicas` 参数：值必须大于 1，要求一个 leader 至少感知到有至少一个 follower 还跟自己保持联系
+  - producer 端设置 `acks=all`：要求每条数据，必须是**写入所有 replica 之后，才能认为是写成功了**。
+  - producer 端设置 `retries=MAX`：这个是**要求一旦写入失败，就无限重试**
+- 生产者丢失数据
+  - `acks=all`
+  - `retries=MAX`
+
 # 顺序性
+
+## RabbitMQ
+
+![](images/rabbitmq-order-01.png)
+
+解决方案，一个queue对应一个consumer，consumer内部用内存队列做排队，分发给不同的worker处理
+
+![](images/rabbitmq-order-02.png)
+
+## Kafka
+
+比如一个 topic 包含三个 partition，生产者写的时指定唯一 key，可以保证 partition 中的数据从写入到取出都是有序的
+
+问题出在消费的时候开启多个线程来处理消息，单线程处理吞吐量太低
+
+![](images/kafka-order-01.png)
+
+解决方案：写N个内存队列，具有相同 key 的数据都到同一个内存队列，对于N个线程，每个线程分别消费一个内存队列
+
+![](images/kafka-order-02.png)
 
