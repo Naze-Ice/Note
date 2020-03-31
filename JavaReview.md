@@ -246,6 +246,44 @@ CAS缺点：
 2. **自旋（不成功就循环直到成功）长时间不成功开销大**，限制自旋次数解决
 3. 只能保证一个共享变量的原子性
 
+```java
+public class ABADemo {
+    private static AtomicStampedReference<Integer> atomicStampedReference = new AtomicStampedReference<>(10,1);
+    public static void main(String[] args) {
+        new Thread(() -> {
+            int stamp = atomicStampedReference.getStamp();
+            System.out.println(Thread.currentThread().getName() + "\t第1次版本：" + stamp);
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                atomicStampedReference.compareAndSet(10,11,atomicStampedReference.getStamp(),atomicStampedReference.getStamp() + 1);
+                System.out.println(Thread.currentThread().getName() + "\t第2次版本号：" + stamp);
+                atomicStampedReference.compareAndSet(11,10,atomicStampedReference.getStamp(),atomicStampedReference.getStamp() + 1);
+                System.out.println(Thread.currentThread().getName() + "\t第3次版本号：" + stamp);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        },"t1").start();
+        new Thread(() -> {
+            int stamp = atomicStampedReference.getStamp();
+            System.out.println(Thread.currentThread().getName() + "\t第1次版本：" + stamp);
+            try {
+                TimeUnit.SECONDS.sleep(3); //等待t1完成
+                boolean result = atomicStampedReference.compareAndSet(10, 12, stamp, stamp + 1);
+                System.out.println(Thread.currentThread().getName() + "\t修改成功否：" + result + "\t当前实际版本号" + atomicStampedReference.getStamp());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        },"t2").start();
+    }
+}
+
+t1	第1次版本：1
+t2	第1次版本：1
+t1	第2次版本号：1
+t1	第3次版本号：1
+t2	修改成功否：false	当前实际版本号3
+```
+
 ### 9.Atomic原子类总结：
 
 ![](images/TIM截图20200229124055.png)
@@ -431,6 +469,8 @@ public class ThisEscape {
    - 方法区中的类静态属性、常量引用的对象
 
 > 可达性分析算法中的不可达对象并非“非死不可”，第一次标记后，如果该对象重写过finalize()方法且未被虚拟机调用，则会进入筛选，此期间若与引用链的对象建立关联则可以“免死”
+
+> 引用包括强软弱虚四种，softReference和weekReference可用作缓存，如HashMap<String,SoftReference<Bitmap>>，WeekHashMap<K,V>中K被置为null时可以被GC掉。PhantomReference必须和ReferenceQueue（软弱虚引用被回收前一定会进入该队列）使用，可以用来判断所引用的对象的内存是否被回收
 
 **回收方法区**：
 
