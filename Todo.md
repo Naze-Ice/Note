@@ -5,3 +5,13 @@
 - [ ] Java8新特性
 - [x] JMM
 - [ ] 完善Dockerfile、Docker-compose
+
+
+
+------
+
+> 技术扩充
+
+------
+
+- [ ] Canal数据库同步组件

@@ -470,7 +470,7 @@ public class ThisEscape {
 
 > 可达性分析算法中的不可达对象并非“非死不可”，第一次标记后，如果该对象重写过finalize()方法且未被虚拟机调用，则会进入筛选，此期间若与引用链的对象建立关联则可以“免死”
 
-> 引用包括强软弱虚四种，softReference和weekReference可用作缓存，如HashMap<String,SoftReference<Bitmap>>，WeekHashMap<K,V>中K被置为null时可以被GC掉。PhantomReference必须和ReferenceQueue（软弱虚引用被回收前一定会进入该队列）使用，可以用来判断所引用的对象的内存是否被回收
+> 引用包括强软弱虚四种，softReference和weekReference可用作缓存，如HashMap<String,SoftReference<Bitmap>>，WeakHashMap<K,V>中K被置为null时可以被GC掉。PhantomReference必须和ReferenceQueue（软弱虚引用被回收前一定会进入该队列）使用，可以用来判断所引用的对象的内存是否被回收
 
 **回收方法区**：
 
