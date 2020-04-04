@@ -69,7 +69,7 @@ ISR全称是“In-Sync Replicas”，也就是**保持同步的副本**，他的
 
 但是这里有一个问题，万一Partition Leader刚刚接收到消息，Follower还没来得及同步过去，结果Leader所在的broker宕机了，此时也会导致这条消息丢失，因为人家客户端已经认为发送成功了。
 
-[![img](https://github.com/XU-ZHOU/Java/raw/master/pictures/4.jpg)](https://github.com/XU-ZHOU/Java/blob/master/pictures/4.jpg)
+![](images/4.jpg)
 
 **最后一种情况，就是设置acks=all**，这个意思就是说，**Partition Leader接收到消息之后，还必须要求ISR列表里跟Leader保持同步的那些Follower都要把消息同步过去**，才能认为这条消息是写入成功了。
 
@@ -77,7 +77,7 @@ ISR全称是“In-Sync Replicas”，也就是**保持同步的副本**，他的
 
 此时可能Partition 2的Follower变成Leader了，此时ISR列表里只有最新的这个Follower转变成的Leader了，那么只要这个新的Leader接收消息就算成功了。
 
-[![img](https://github.com/XU-ZHOU/Java/raw/master/pictures/5.jpg)](https://github.com/XU-ZHOU/Java/blob/master/pictures/5.jpg)
+![](images/5.jpg)
 
 ### **6.最后的思考**
 
@@ -254,7 +254,7 @@ Kafka的客户端发送数据到服务器，一般都是要经过**缓冲**的�
 
 整个过程，如下图所示：
 
-![img](E:\Note\images\9-1586004271716.jpg)
+![img](https://github.com/XU-ZHOU/Java/raw/master/pictures/9.jpg)
 
 ## 四、Kafka选举
 
