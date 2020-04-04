@@ -134,7 +134,7 @@ KafkaProducer<String, String> producer = new KafkaProducer<String, String>(props
 
 Kafka的客户端发送数据到服务器，一般都是要经过**缓冲**的，也就是说，**通过KafkaProducer发送出去的消息都是先进入到客户端本地的内存缓冲里，然后把很多消息收集成一个一个的Batch，再发送到Broker上去的**。
 
-![img](E:\Note\images\6-1586004208769.jpg)
+![img](images/6.jpg)
 
 所以这个“**buffer.memory”的本质就是用来约束KafkaProducer能够使用的内存缓冲的大小的，他的默认值是32MB**。
 
@@ -144,7 +144,7 @@ Kafka的客户端发送数据到服务器，一般都是要经过**缓冲**的�
 
 然后KafkaProducer有一个Sender线程会把多个Batch打包成一个Request发送到Kafka服务器上去。
 
-![img](E:\Note\images\7-1586004232621.jpg)
+![img](images/7.jpg)
 
 那么如果要是**内存设置的太小**，可能**导致一个问题**：消息快速的写入内存缓冲里面，但是Sender线程来不及把Request发送到Kafka服务器。
 
@@ -226,7 +226,7 @@ Kafka的客户端发送数据到服务器，一般都是要经过**缓冲**的�
 
 假如有如下的系统：
 
-![img](E:\Note\images\8-1586004258067.jpg)
+![img](images/8.jpg)
 
 生产中存在这种情况：如果独立仓库系统或者第三方物流系统故障了，导致仓储系统消费到一条订单消息之后，尝试进行发货失败，也就是对这条消费到的消息处理失败。这种情况，怎么处理？
 
@@ -254,7 +254,7 @@ Kafka的客户端发送数据到服务器，一般都是要经过**缓冲**的�
 
 整个过程，如下图所示：
 
-![img](https://github.com/XU-ZHOU/Java/raw/master/pictures/9.jpg)
+![img](images/9.jpg)
 
 ## 四、Kafka选举
 
