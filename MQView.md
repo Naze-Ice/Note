@@ -196,5 +196,7 @@ RabbitMQ 是采用 Erlang 语言实现 AMQP(Advanced Message Queuing Protocol，
 
 RabbitMQ整体模型架构（像交换机模型）
 
+![image-20200404181234705](E:\Note\images\image-20200404181234705.png)
+
 ![](images/96388546.jpg)
 
