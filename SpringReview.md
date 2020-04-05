@@ -1,4 +1,4 @@
-## Spring如何简化开发
+## Spring优点
 
 - 基于POJO的轻量级和最小侵入式编程：不会因为Spring的API弄乱应用代码
 - 通过依赖注入和面向接口实现松耦合
@@ -9,22 +9,6 @@
 - 构造方法注入
 - setter注入
 - 接口注入：强制被注入对象实现不必要的接口，带有侵入性，不提倡
-
-## SpringBean作用域
-
-- singleton : 唯一 bean 实例，Spring 中的 bean 默认都是单例的。
-
-  >  IOC实例化时就创建
-
-- prototype（原型） : 每次请求都会创建一个新的 bean 实例。
-
-  > getBean时才会创建
-
-- request : 每一次HTTP请求都会产生一个新的bean，该bean仅在当前HTTP request内有效。
-
-- session : 每一次HTTP请求都会产生一个新的 bean，该bean仅在当前 HTTP session 内有效。
-
-- global-session： 全局session作用域，仅仅在基于portlet的web应用中才有意义，Spring5已经没有了
 
 ## Spring事务传播行为
 
@@ -58,4 +42,22 @@
 - ViewResolver 会根据逻辑 View 查找实际的 View。
 - DispaterServlet 把返回的 Model 传给 View（视图渲染）。
 - 把 View 返回给请求者（浏览器）
+
+## SpringBean作用域
+
+- singleton : 唯一 bean 实例，Spring 中的 bean 默认都是单例的。
+
+  >  IOC实例化时就创建，可通过给bean设置lazy-init=true来延迟初始化，获取bean时才创建
+
+- prototype（原型） : 每次请求都会创建一个新的 bean 实例。
+
+  > 获取Bean时才会创建
+
+- request : 每一次HTTP请求都会产生一个新的bean，该bean仅在当前HTTP request内有效。
+
+- session : 每一次HTTP请求都会产生一个新的 bean，该bean仅在当前 HTTP session 内有效。
+
+- global-session： 全局session作用域，仅仅在基于portlet的web应用中才有意义，Spring5已经没有了
+
+## SpringBean生命周期
 

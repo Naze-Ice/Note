@@ -5,6 +5,7 @@
 - [ ] Java8新特性
 - [x] JMM
 - [ ] 完善Dockerfile、Docker-compose
+- [ ] Redis
 
 
 
