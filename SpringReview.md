@@ -66,9 +66,16 @@
 ## 自动装配策略
 
 - no（默认）：无需自动装配，除非bean上配置了Autowire属性
-- byName：通过bean的id属性装配
+- byName：通过属性的名称与bean的id匹配
 
 ```java
+public class User{
+	private Role myRole;
+}
+public class Role {
+	private String id;	
+	private String name;
+}
 <bean id="myRole" class="com.viewscenes.netsupervisor.entity.Role">
 	<property name="id" value="1001"></property>
 	<property name="name" value="管理员"></property>
@@ -104,23 +111,27 @@ public class User{
 
 **@Autowired**
 
-- 强制性，如果没有找到bean可以装配到Autowired所标注的参数，会抛出`NoSuchBeanDefinitionException`异常
+- 强制性，默认一定要将属性赋值好，没有就报错，可通过添加required=flase设置为非强制性
 
-- 装配策略：默认使用byType装配，颗匹配到类型的多个实例（如同一接口的不同实现），再通过byName来缺点bean
-- 主和优先级：当通过byName也无法确定
+- 装配策略：默认使用byType装配，如果匹配到类型的多个实例（如同一接口的不同实现），再通过byName来确定bean
+- @Qualifier("bookDao")：使用该注解来指定需要装配的组件的id，而不是使用属性名
+- @Primary：装配时默认使用首选的bean，也可以同时使用@Qualifier
+
+另外Spring还支持两个Java规范的注解
+
+- @Resource（JSR250）：默认按名称装配，不支持@Primary和required=false
+- @Inject（JSR330）：需导入依赖，默认有@Primary功能，不支持required=false功能
 
 ## SpringBean生命周期
 
-当getBean()时，如果发现没有实例化，则会调用createBean()进行实例化，如下
-
 ![img](images/640-1586154049179.webp)
-
-
 
 1. 读取xml配置文件或者注解获取bean的定义，通过反射创建对象
 
-2. 设置对象属性，如果实现了*Aware相关接口则通过set方法设置相关依赖
+2. 设置对象属性
+
+3. 如果实现了*Aware相关接口则通过set方法设置相关依赖
 
    > 如BeanNameAware传入bean的名字、BeanClassLoaderAware传入ClassLoader对象实例、ApplicationContextAware传入ioc容器等
 
-3. 如果bean实现了InitializingBean接口，则执行afterPropertiesSet方法
+4. 如果bean实现了InitializingBean接口，则执行afterPropertiesSet方法

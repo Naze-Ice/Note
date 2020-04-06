@@ -1,11 +1,11 @@
-- [ ] Spring面试题
-- [ ] rabbitmq学习
+- [ ] Spring面试题，优先
+- [ ] rabbitmq学习，优先
 - [ ] zookeeper学习
 - [x] 多线程处理Excel
 - [ ] Java8新特性
 - [x] JMM
 - [ ] 完善Dockerfile、Docker-compose
-- [ ] Redis
+- [ ] Redis，优先
 - [ ] Springcloud相关概念
 
 
