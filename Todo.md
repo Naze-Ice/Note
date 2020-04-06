@@ -6,6 +6,7 @@
 - [x] JMM
 - [ ] 完善Dockerfile、Docker-compose
 - [ ] Redis
+- [ ] Springcloud相关概念
 
 
 
