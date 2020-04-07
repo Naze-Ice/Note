@@ -62,6 +62,39 @@
 
 - BeanFactory：基础类型IOC容器，默认采用延迟初始化策略
 - ApplicationContext：基于BeanFactory构建的高级（如事件发布、国际化信息支持等）IOC容器，默认完成bean的初始化
+  - AnnotationConfigApplicationContext：基于Java配置类中加载Spring应用上下文
+  - AnnotationConfigWebApplicationContext：基于Java配置类中加载Spring Web应用上下文
+  - ClassPathXmlApplicationContext：从类路径下的XML文件中加载上下文定义
+  - FileSystemXmlApplicationContext：从文件系统（如C盘）的XML文件中加载上下文定义
+  - XmlWebApplicationContext：从Web应用下的XML文件中加载上下文定义
+
+## SpringBean生命周期
+
+![image-20200407143012170](images/image-20200407143012170.png)
+
+1. 读取xml配置文件或者注解获取bean的定义，通过反射创建对象
+
+2. 设置对象属性
+
+3. 如果实现了*Aware相关接口则通过set方法设置相关依赖
+
+   > 如BeanNameAware传入bean的名字、BeanClassLoaderAware传入ClassLoader对象实例、BeanFactoryAware传入BeanFactory、ApplicationContextAware传入ApplicationContext等
+
+4. 如果实现了BeanPostProcessor，则调用postProcessBeforeInitialization方法
+
+5. 调用初始化方法
+
+   - 如果bean实现了InitializingBean接口，则执行afterPropertiesSet方法
+   - 如果通过xml或者注解添加了init方法，则执行
+
+6. 如果实现了BeanPostProcessor，则调用postProcessAfterInitialization方法
+
+7. 使用
+
+8. 调用销毁方法
+
+   - 如果实现了DisposableBean接口，则调用destroy方法
+   - 如果通过xml或者注解添加了destroy方法，则执行
 
 ## 自动装配策略
 
@@ -122,16 +155,6 @@ public class User{
 - @Resource（JSR250）：默认按名称装配，不支持@Primary和required=false
 - @Inject（JSR330）：需导入依赖，默认有@Primary功能，不支持required=false功能
 
-## SpringBean生命周期
+## Spring的设计模式
 
-![img](images/640-1586154049179.webp)
-
-1. 读取xml配置文件或者注解获取bean的定义，通过反射创建对象
-
-2. 设置对象属性
-
-3. 如果实现了*Aware相关接口则通过set方法设置相关依赖
-
-   > 如BeanNameAware传入bean的名字、BeanClassLoaderAware传入ClassLoader对象实例、ApplicationContextAware传入ioc容器等
-
-4. 如果bean实现了InitializingBean接口，则执行afterPropertiesSet方法
+- 代理模式：目标对象实现了接口的话用JDK代理，否则只能用CGLib代理
