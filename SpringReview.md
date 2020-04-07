@@ -96,6 +96,13 @@
    - 如果实现了DisposableBean接口，则调用destroy方法
    - 如果通过xml或者注解添加了destroy方法，则执行
 
+## SpringBean单例与线程安全
+
+Spring的默认单例bean是线程不安全的，可通过两种方式解决：
+
+- ThreadLocal
+- 同步锁
+
 ## 自动装配策略
 
 - no（默认）：无需自动装配，除非bean上配置了Autowire属性
@@ -157,4 +164,10 @@ public class User{
 
 ## Spring的设计模式
 
-- 代理模式：目标对象实现了接口的话用JDK代理，否则只能用CGLib代理
+- 代理模式
+  - JDK代理是通过实现InvocationHandler接口的invoke方法，代理的是接口，所有目标类必须要实现接口，通过Proxy.newProxyInstance得到代理对象，Spring默认使用
+  - JDK无法代理时使用CGLIB代理，CGLIB代理时通过动态字节码增强技术，派生出目标类的子类，执行时调用生成的子类，目标类或其方法被final修饰将无法代理
+- 单例模式
+- 工厂模式
+- 模板方法模式：RestTemplate、AmqpTemplate、JpaTemplate
+
