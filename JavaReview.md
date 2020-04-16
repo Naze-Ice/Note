@@ -774,3 +774,36 @@ int [] myArray2 = { 1, 2, 3 };
 List myList = Arrays.stream(myArray2).boxed().collect(Collectors.toList());
 ```
 
+### 2.try-with-resource
+
+JDK1.7的语法，优雅地关闭资源
+
+如果一个类实现了AutoCloseable接口，并行重写close方法。
+那么这个类就可以写在try-catch的try后面的括号中，并且能在try-catch块执行后自动执行这个方法，从而替代了finally中关闭资源（也要使用try防止关闭时出错）的功能。
+
+```java
+//避免忘记使用try，导致Jedis对象无法归还连接池
+interface CallWithJedis {
+ 	public void call(Jedis jedis);
+}
+class RedisPool {
+    private JedisPool pool;
+    public RedisPool() {
+        this.pool = new JedisPool();
+    }
+    public void execute(CallWithJedis caller) {
+        try (Jedis jedis = pool.getResource()) {
+            caller.call(jedis);
+        }
+    }
+}
+public class JedisTest {
+    public static void main(String[] args) {
+        RedisPool redis = new RedisPool();
+        redis.execute(jedis -> {
+            // do something with jedis
+        });
+    }
+}
+```
+
