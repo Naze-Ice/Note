@@ -7,6 +7,7 @@
 - [ ] 完善Dockerfile、Docker-compose
 - [ ] Redis，优先
 - [ ] Springcloud相关概念
+- [ ] Spring统一异常处理
 
 
 
