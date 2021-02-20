@@ -807,3 +807,41 @@ public class JedisTest {
 }
 ```
 
+### 3.finally与return执行顺序
+
+- finally中的代码一定执行
+
+~~~java
+static int f() {
+    try {
+        return 0;  
+    } finally {
+        return 1; // 返回 1
+    }
+}
+~~~
+
+- finally中改动try中return的变量，变量为基本数据类型时改动无效，引用数据类型时生效（值传递）
+
+~~~java
+static int f() {
+    int ret = 0;
+    try {
+        return ret;  // 返回 0
+    } finally {
+        ret++;
+        System.out.println("finally执行");
+    }
+}
+
+static int[] f2(){
+    int[] ret = new int[]{0};
+    try {
+        return ret;  // 返回 {1}
+    } finally {
+        ret[0]++;
+        System.out.println("finally执行");
+    }
+}
+~~~
+
