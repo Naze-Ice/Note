@@ -190,6 +190,25 @@ public class User{
   - JDK代理是通过实现InvocationHandler接口的invoke方法，代理的是接口，所有目标类必须要实现接口，通过Proxy.newProxyInstance得到代理对象，Spring默认使用
   - JDK无法代理时使用CGLIB代理，CGLIB代理时通过动态字节码增强技术，派生出目标类的子类，执行时调用生成的子类，目标类或其方法被final修饰将无法代理
 - 单例模式
-- 工厂模式
+- 工厂模式：Spring通过BeanFactory、ApplicationContext创建Bean
 - 模板方法模式：RestTemplate、AmqpTemplate、JpaTemplate
+
+## Spring统一异常处理
+
+- 通过@RestControllerAdvice + @ExceptionHandler实现，会给所有或指定Controller织入异常处理的逻辑（AOP）
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BaseException.class)
+    public ResponseEntity<?> handleAppException(BaseException ex, HttpServletRequest request) {
+      //......
+    }
+
+    @ExceptionHandler(value = ResourceNotFoundException.class)
+    public ResponseEntity<ErrorReponse> handleResourceNotFoundException(ResourceNotFoundException ex, HttpServletRequest request) {
+      //......
+    }
+}
+```
 
